@@ -56,6 +56,8 @@ public interface IDateTimeConfig {
 
     public TimeZone lookupTimeZone(String str);
 
+    public TimeZone lookupTimeZone(String str, TimeZone defaultTimeZone);
+
     public Integer lookupMonthIndex(String monthNameOrAbbreviation);
 
     public boolean isUnspecifiedCenturyAlwaysInPast();

@@ -68,8 +68,19 @@ public class LocalConfig implements IDateTimeConfig {
     }
 
     @Override
-    public TimeZone lookupTimeZone(String str) {
-        return config.lookupTimeZone(str);
+    /**
+     * Lookup the TimeZone, including custom time zones.
+     */
+    public TimeZone lookupTimeZone(String id) {
+        return config.lookupTimeZone(id, inputTimeZone);
+    }
+
+    @Override
+    /**
+     * Lookup the TimeZone, including custom time zones.
+     */
+    public TimeZone lookupTimeZone(String id, TimeZone defaultTimeZone) {
+        return config.lookupTimeZone(id, defaultTimeZone);
     }
 
     @Override

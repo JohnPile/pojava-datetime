@@ -928,4 +928,10 @@ public class DateTimeTester extends TestCase {
         assertEquals(23 * minute + 20 * second, (time4 - time3) % day);
     }
 
+    public void testDateWithYearFollowingTimeZone() {
+        TimeZone utc=TimeZone.getTimeZone("UTC");
+        DateTime dt=new DateTime("Wed Mar 04 05:09:06 GMT-06:00 2009", utc);
+        assertEquals("2009-03-04 11:09:06", dt.toString());
+    }
+
 }

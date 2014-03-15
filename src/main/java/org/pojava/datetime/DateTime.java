@@ -282,16 +282,20 @@ public class DateTime implements Serializable, Comparable<DateTime> {
         int max = str.length() - 1;
         int idx = max;
         char c = '\0';
-        // Working right to left, skip past numbers and colons
+        // Working right to left, skip past numbers, colons, and four-digit years
+        boolean digitsOnly=true;
         while (idx > min) {
             c = chars[idx];
-            if (c >= '0' && c <= '9' || c == ':') {
+            if (c >= '0' && c <= '9' || c == ' ' && idx==max-4 && digitsOnly) {
+                idx--;
+            } else if (c == ':') {
+                digitsOnly=false;
                 idx--;
             } else {
                 break;
             }
         }
-        // Recognize umeric offset such as -0800 or +05:30
+        // Recognize numeric offset such as -0800 or +05:30
         if (idx >= min && (c == '+' || c == '-')) {
             return str.substring(idx);
         }
@@ -878,6 +882,16 @@ public class DateTime implements Serializable, Comparable<DateTime> {
 
     }
 
+    private static String extract(String str, String remove) {
+        int pos=str.indexOf(remove);
+        int size=remove.length();
+        if (pos == str.length() - 1 - size) {
+            return str.substring(0, pos);
+        }
+        return str.substring(0, pos) + " " + str.substring(pos + size);
+    }
+
+
     /**
      * Interpret a DateTime from a String.
      *
@@ -915,6 +929,9 @@ public class DateTime implements Serializable, Comparable<DateTime> {
             str = str.replaceAll("([A-Z]{3})([0-9])", "$1 $2");
         }
         String tzString = tzParse(str);
+        if (tzString!=null && tzString.contains(" ")) {
+            tzString=tzString.substring(0, tzString.indexOf(' '));
+        }
         if ("AM".equals(tzString) || "PM".equals(tzString)) {
             tzString = null;
         }
@@ -924,11 +941,11 @@ public class DateTime implements Serializable, Comparable<DateTime> {
         }
         if (tzString != null && tzString.endsWith("0")) {
             if (tzString.matches("[+-][0-9]{2}:[0-9]{2}")) {
+                str = extract(str, tzString);
                 tzString = "GMT" + tzString;
-                str = str.substring(0, str.length() - 6);
             } else if (tzString.matches("[+-][0-9]{4}")) {
+                str = extract(str, tzString);
                 tzString = "GMT" + tzString.substring(0, 3) + ":" + tzString.substring(3);
-                str = str.substring(0, str.length() - 5);
             }
         }
         TimeZone tz = tzString == null ? config.getInputTimeZone() : config.lookupTimeZone(tzString);

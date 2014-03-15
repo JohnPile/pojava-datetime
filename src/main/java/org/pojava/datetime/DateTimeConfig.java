@@ -160,7 +160,7 @@ public class DateTimeConfig implements IDateTimeConfig, Serializable {
     /**
      * Merge a Map of time zones recognized by DateTime
      *
-     * @param tzMap
+     * @param tzMap A map of custom time zone ids to TimeZone objects
      */
     public void addTzMap(Map<String, String> tzMap) {
         this.tzMap.putAll(tzMap);
@@ -209,20 +209,24 @@ public class DateTimeConfig implements IDateTimeConfig, Serializable {
         return defaultJdbcFormat;
     }
 
+    public TimeZone lookupTimeZone(String id) {
+        return lookupTimeZone(id, this.inputTimeZone);
+    }
+
     /**
      * Lookup the TimeZone, including custom time zones.
      */
-    public TimeZone lookupTimeZone(String id) {
+    public TimeZone lookupTimeZone(String id, TimeZone defaultTimeZone) {
         TimeZone tz;
         if (id == null) {
-            tz = this.inputTimeZone;
+            tz = defaultTimeZone;
         } else if (!tzCache.containsKey(id)) {
             tz = TimeZone.getTimeZone(id);
             // TimeZone defaults to GMT if it can't match a parsed timezone.
             if ("GMT".equals(tz.getID())) {
                 if (!("GMT".equals(id) || "UTC".equals(id) || "CUT".equals(id) || "Z".equals(id) || "WET".equals(id))) {
                     // If it's GMT due to parse error, we'll default to input time.
-                    return inputTimeZone;
+                    return defaultTimeZone;
                 }
             }
             tzCache.put(id, tz);
