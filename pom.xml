@@ -6,7 +6,7 @@
 
     <groupId>org.pojava</groupId>
     <artifactId>datetime</artifactId>
-    <version>3.0.1</version>
+    <version>3.0.1-SNAPSHOT</version>
 
     <name>POJava DateTime</name>
     <description>
@@ -29,10 +29,9 @@
         <compiler-version>1.6</compiler-version>
     </properties>
     <scm>
-        <connection>scm:svn:http://code.google.com/p/pojava/source/browse/#svn/pojava.org.pojava.datetime-3.x/trunk</connection>
-        <developerConnection>scm:svn:http://code.google.com/p/pojava/source/browse/#svn/pojava.org.pojava.datetime-2.x/trunk
-        </developerConnection>
-        <url>http://code.google.com/p/pojava/source/browse/#svn/pojava.org.pojava.datetime-3.x/trunk</url>
+        <connection>scm:git:git@github.com:JohnPile/pojava-datetime.git</connection>
+        <url>scm:git:git@github.com:JohnPile/pojava-datetime.git</url>
+        <developerConnection>scm:git:git@github.com:JohnPile/pojava-datetime.git</developerConnection>
     </scm>
     <build>
         <outputDirectory>target/classes</outputDirectory>
@@ -117,6 +116,11 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>2.0-beta-9</version>
             </plugin>
         </plugins>
 
