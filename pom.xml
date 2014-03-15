@@ -55,43 +55,6 @@
             </testResource>
         </testResources>
         <plugins>		
-            <plugin> 
-                <groupId>org.apache.maven.plugins</groupId> 
-                <artifactId>maven-repository-plugin</artifactId> 
-                <version>2.3.1</version> 
-                <executions> 
-                    <execution> 
-                        <id>attach-bundle</id> 
-                        <phase>verify</phase> 
-                        <goals> 
-                            <goal>bundle-create</goal> 
-                        </goals> 
-                    </execution> 
-                </executions> 
-            </plugin> 
-            <plugin> 
-                <groupId>org.codehaus.mojo</groupId> 
-                <artifactId>build-helper-maven-plugin</artifactId> 
-                <version>1.8</version> 
-                <executions> 
-                    <execution> 
-                        <id>attach-artifacts-bundle</id> 
-                        <phase>verify</phase> 
-                        <goals> 
-                            <goal>attach-artifact</goal> 
-                        </goals> 
-                        <configuration> 
-                            <artifacts> 
-                                <artifact> 
-<file>${project.build.directory}/${project.artifactId}-${project.version}-bundle.jar</file> 
-                                    <type>jar-no-fork</type> 
-                                    <classifier>bundle</classifier> 
-                                </artifact> 
-                            </artifacts> 
-                        </configuration> 
-                    </execution> 
-                </executions> 
-            </plugin> 
             <plugin>
                 <artifactId>maven-source-plugin</artifactId>
                 <version>2.1.2</version>
@@ -123,7 +86,6 @@
                 <version>2.16</version>
                 <configuration>
                     <systemPropertyVariables>
-                        <maven.home>${maven.home}</maven.home>
                         <includes>
                             <include>**/*Test.java</include>
                             <include>**/*Tester.java</include>
@@ -138,7 +100,7 @@
                 <executions>
                     <execution>
                         <id>sign-artifacts</id>
-                        <phase>verify</phase>
+                        <!-- <phase>verify</phase> -->
                         <goals>
                             <goal>sign</goal>
                         </goals>
@@ -150,6 +112,20 @@
                 <artifactId>maven-release-plugin</artifactId>
                 <version>2.5</version>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId> 
+                <artifactId>maven-repository-plugin</artifactId> 
+                <version>2.3.1</version> 
+                <executions> 
+                    <execution> 
+                        <id>attach-bundle</id> 
+                        <phase>verify</phase>
+                        <goals> 
+                            <goal>bundle-create</goal> 
+                        </goals> 
+                    </execution> 
+                </executions> 
+            </plugin> 
         </plugins>
 
     </build>
