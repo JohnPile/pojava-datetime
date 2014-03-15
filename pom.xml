@@ -4,7 +4,7 @@
 
     <groupId>org.pojava</groupId>
     <artifactId>datetime</artifactId>
-    <version>3.0.1</version>
+    <version>3.0.2-SNAPSHOT</version>
 
     <name>POJava DateTime</name>
     <description>
