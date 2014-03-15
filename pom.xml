@@ -4,7 +4,7 @@
 
     <groupId>org.pojava</groupId>
     <artifactId>datetime</artifactId>
-    <version>3.0.1</version>
+    <version>3.0.1-SNAPSHOT</version>
 
     <name>POJava DateTime</name>
     <description>
@@ -14,11 +14,6 @@
         ambiguous date like "03/06/2014" as DMY order or MDY order are inferred by system time zone
         and locale and stored in a default config object that can be replaced or overridden.  Multiple
         languages for month names are supported without any additional configuration needed.
-
-        The net effect the default parser for a server in Paris would have a different automatic
-        configuration from a server in New York.  Throw a random local date at either, and it'll
-        parse it as expected.  If your server supports customers from multiple locales and time zones,
-        then each can be specified when parsing a date/time to resolve any ambiguities.
     </description>
     <url>http://www.pojava.org</url>
     <properties>
@@ -31,6 +26,12 @@
         <url>scm:git:git@github.com:JohnPile/pojava-datetime.git</url>
         <developerConnection>scm:git:git@github.com:JohnPile/pojava-datetime.git</developerConnection>
     </scm>
+    <distributionManagement>
+        <repository>
+            <id>sonatype-nexus-staging</id>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+    </distributionManagement>
     <build>
         <outputDirectory>target/classes</outputDirectory>
         <finalName>${project.artifactId}-${project.version}
@@ -54,7 +55,44 @@
                 <directory>${basedir}/test</directory>
             </testResource>
         </testResources>
-        <plugins>
+        <plugins>		
+            <plugin> 
+                <groupId>org.apache.maven.plugins</groupId> 
+                <artifactId>maven-repository-plugin</artifactId> 
+                <version>2.3.1</version> 
+                <executions> 
+                    <execution> 
+                        <id>attach-bundle</id> 
+                        <phase>verify</phase> 
+                        <goals> 
+                            <goal>bundle-create</goal> 
+                        </goals> 
+                    </execution> 
+                </executions> 
+            </plugin> 
+            <plugin> 
+                <groupId>org.codehaus.mojo</groupId> 
+                <artifactId>build-helper-maven-plugin</artifactId> 
+                <version>1.8</version> 
+                <executions> 
+                    <execution> 
+                        <id>attach-artifacts-bundle</id> 
+                        <phase>verify</phase> 
+                        <goals> 
+                            <goal>attach-artifact</goal> 
+                        </goals> 
+                        <configuration> 
+                            <artifacts> 
+                                <artifact> 
+<file>${project.build.directory}/${project.artifactId}-${project.version}-bundle.jar</file> 
+                                    <type>jar-no-fork</type> 
+                                    <classifier>bundle</classifier> 
+                                </artifact> 
+                            </artifacts> 
+                        </configuration> 
+                    </execution> 
+                </executions> 
+            </plugin> 
             <plugin>
                 <artifactId>maven-source-plugin</artifactId>
                 <version>2.1.2</version>
@@ -69,13 +107,16 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>2.5.1</version>
-                <configuration>
-                    <source>${compiler-version}</source>
-                    <target>${compiler-version}</target>
-                    <debug>true</debug>
-                </configuration>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>2.7</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -93,19 +134,6 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>2.7</version>
-                <executions>
-                    <execution>
-                        <id>attach-javadocs</id>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
                 <version>1.5</version>
                 <executions>
@@ -118,10 +146,10 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
+			<plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-release-plugin</artifactId>
-                <version>2.0-beta-9</version>
+                <version>2.5</version>
             </plugin>
         </plugins>
 
@@ -138,7 +166,6 @@
                 </configuration>
             </plugin>
         </plugins>
-
     </reporting>
     <developers>
         <developer>
@@ -162,7 +189,7 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>3.8.2</version>
+            <version>4.11</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
