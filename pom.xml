@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.pojava</groupId>
+    <artifactId>datetime</artifactId>
+    <version>3.0.0</version>
+
+    <name>POJava DateTime</name>
+    <description>
+        POJava DateTime is a simple, light-weight Java-based API for parsing and manipulating dates.
+        It parses dates from most languages and formats out of the box without having to specify which
+        format is expected.  Defaults such as time zones, and whether to interpret an internationally
+        ambiguous date like "03/06/2014" as DMY order or MDY order are inferred by system time zone
+        and locale and stored in a default config object that can be replaced or overridden.  Multiple
+        languages for month names are supported without any additional configuration needed.
+
+        The net effect the default parser for a server in Paris would have a different automatic
+        configuration from a server in New York.  Throw a random local date at either, and it'll
+        parse it as expected.  If your server supports customers from multiple locales and time zones,
+        then each can be specified when parsing a date/time to resolve any ambiguities.
+    </description>
+    <url>http://www.pojava.org</url>
+    <properties>
+        <output-directory>${basedir}/target/classes</output-directory>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <compiler-version>1.6</compiler-version>
+    </properties>
+    <scm>
+        <connection>scm:svn:http://code.google.com/p/pojava/source/browse/#svn/pojava.org.pojava.datetime-3.x/trunk</connection>
+        <developerConnection>scm:svn:http://code.google.com/p/pojava/source/browse/#svn/pojava.org.pojava.datetime-2.x/trunk
+        </developerConnection>
+        <url>http://code.google.com/p/pojava/source/browse/#svn/pojava.org.pojava.datetime-3.x/trunk</url>
+    </scm>
+    <build>
+        <outputDirectory>target/classes</outputDirectory>
+        <finalName>${project.artifactId}-${project.version}
+        </finalName>
+        <testOutputDirectory>target/test-classes
+        </testOutputDirectory>
+        <sourceDirectory>src/main/java</sourceDirectory>
+        <testSourceDirectory>src/test/java</testSourceDirectory>
+        <directory>${basedir}/target</directory>
+        <resources>
+            <resource>
+                <excludes>
+                    <exclude>**/*.java</exclude>
+                    <exclude>**/package.html</exclude>
+                </excludes>
+                <directory>${basedir}/src</directory>
+            </resource>
+        </resources>
+        <testResources>
+            <testResource>
+                <directory>${basedir}/test</directory>
+            </testResource>
+        </testResources>
+        <plugins>
+            <plugin>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>2.1.2</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>2.5.1</version>
+                <configuration>
+                    <source>${compiler-version}</source>
+                    <target>${compiler-version}</target>
+                    <debug>true</debug>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.6</version>
+                <configuration>
+                    <includes>
+                        <include>**/*Test.java</include>
+                        <include>**/*Tester.java</include>
+                    </includes>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>2.7</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>1.4</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+
+    </build>
+    <reporting>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>findbugs-maven-plugin</artifactId>
+                <version>2.3.2</version>
+                <configuration>
+                    <effort>Max</effort>
+                    <threshold>Low</threshold>
+                </configuration>
+            </plugin>
+        </plugins>
+
+    </reporting>
+    <developers>
+        <developer>
+            <id>phatfingers</id>
+            <name>John Pile</name>
+            <email>john@pile.us</email>
+            <organization>POJava.org</organization>
+            <organizationUrl>http://sourceforge.net/projects/pojava/
+            </organizationUrl>
+            <timezone>America/Chicago</timezone>
+        </developer>
+    </developers>
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>3.8.2</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+</project>
