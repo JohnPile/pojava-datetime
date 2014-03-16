@@ -61,6 +61,7 @@
                 <executions>
                     <execution>
                         <id>attach-sources</id>
+                        <phase>package</phase>
                         <goals>
                             <goal>jar-no-fork</goal>
                         </goals>
@@ -100,7 +101,7 @@
                 <executions>
                     <execution>
                         <id>sign-artifacts</id>
-                        <!-- <phase>verify</phase> -->
+                        <phase>verify</phase>
                         <goals>
                             <goal>sign</goal>
                         </goals>
@@ -112,22 +113,7 @@
                 <artifactId>maven-release-plugin</artifactId>
                 <version>2.5</version>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId> 
-                <artifactId>maven-repository-plugin</artifactId> 
-                <version>2.3.1</version> 
-                <executions> 
-                    <execution> 
-                        <id>attach-bundle</id> 
-                        <phase>verify</phase>
-                        <goals> 
-                            <goal>bundle-create</goal> 
-                        </goals> 
-                    </execution> 
-                </executions> 
-            </plugin> 
         </plugins>
-
     </build>
     <reporting>
         <plugins>
