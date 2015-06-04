@@ -4,7 +4,7 @@
 
     <groupId>org.pojava</groupId>
     <artifactId>datetime</artifactId>
-    <version>3.0.1</version>
+    <version>3.0.2</version>
     <name>POJava DateTime</name>
     <description>
         POJava DateTime is a simple, light-weight Java-based API for parsing and manipulating dates.
@@ -117,15 +117,7 @@
     </build>
     <reporting>
         <plugins>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>findbugs-maven-plugin</artifactId>
-                <version>2.3.2</version>
-                <configuration>
-                    <effort>Max</effort>
-                    <threshold>Low</threshold>
-                </configuration>
-            </plugin>
+
         </plugins>
     </reporting>
     <developers>

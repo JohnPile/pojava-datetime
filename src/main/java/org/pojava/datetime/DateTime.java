@@ -969,10 +969,12 @@ public class DateTime implements Serializable, Comparable<DateTime> {
             throw new IllegalArgumentException("Invalid zero year parsed.");
         }
         // One more scan for Date.toString() style
-        if (!hasDatepart.year && str.endsWith("T " + dateState.parts[dateState.parts.length - 1])) {
-            dateState.year = Integer.parseInt(dateState.parts[dateState.parts.length - 1]);
-            hasDatepart.year = true;
-            dateState.usedint[dateState.usedint.length - 1] = true;
+        if (!hasDatepart.year && hasDatepart.month && str.endsWith(" " + dateState.parts[dateState.parts.length - 1])) {
+            if (str.length()>11 && str.substring(0, 11).matches("^([A-Z]{3} ){2}\\d\\d ")) {
+                dateState.year = Integer.parseInt(dateState.parts[dateState.parts.length - 1]);
+                hasDatepart.year = true;
+                dateState.usedint[dateState.usedint.length - 1] = true;
+            }
         }
         if (!hasDatepart.year) {
             /* Remove time and alpha */

@@ -934,4 +934,10 @@ public class DateTimeTester extends TestCase {
         assertEquals("2009-03-04 11:09:06", dt.toString());
     }
 
+    public void testDateWithTwoDigitYearAndMonthEndingInT() {
+        TimeZone utc=TimeZone.getTimeZone("UTC");
+        DateTime dt=new DateTime("11 Oct 16", utc);
+        assertEquals("2016-10-11 00:00:00", dt.toString());
+    }
+
 }
