@@ -1,12 +1,21 @@
 package org.pojava.datetime;
 
-import junit.framework.TestCase;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.pojava.datetime.examples.EuroDateTimeConfig;
 
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
+
+import static org.junit.Assert.*;
 
 /**
  * Unit tests to verify formatter output against SimpleDateFormat output
@@ -15,7 +24,20 @@ import java.util.TimeZone;
  *
  * @author John Pile
  */
-public class DateTimeFormatTester extends TestCase {
+@RunWith(Parameterized.class)
+public class DateTimeFormatTester  {
+    @Parameterized.Parameters
+    public static Collection<Object[]> data() {
+        return Arrays.asList(new Object[][] {
+                { null }, { DefaultCalendarSupplier.INSTANCE }, { new ThreadLocalCalendarSupplier() }
+        });
+    }
+    private final CalendarSupplier calendarSupplier;
+
+
+    public DateTimeFormatTester(CalendarSupplier calendarSupplier) {
+        this.calendarSupplier = calendarSupplier;
+    }
 
     private DateTimeConfigBuilder configBuilder() {
         DateTimeConfigBuilder dtcBuilder = DateTimeConfigBuilder.newInstance();
@@ -23,14 +45,18 @@ public class DateTimeFormatTester extends TestCase {
         dtcBuilder.setMonthMap(MonthMap.fromAllLocales());
         dtcBuilder.getTzMap().put("Z", "UTC");
         dtcBuilder.getTzCache().put(tz.getID(), tz);
+        if (calendarSupplier != null) {
+            dtcBuilder.setCalendarSupplier(calendarSupplier);
+        }
         return dtcBuilder;
     }
 
-    @Override
+    @Before
     public void setUp() {
         DateTimeConfig.setGlobalDefaultFromBuilder(configBuilder());
     }
 
+    @Test
     public void testCommonFormats() {
         DateTime dt = new DateTime("1/23/45 6:7:8.9101112");
         compareStatic("yy/M/d", dt);
@@ -40,18 +66,21 @@ public class DateTimeFormatTester extends TestCase {
         compareStatic("'o''xx' ''''", dt);
     }
 
+    @Test
     public void testUniqueFormats() {
         DateTime dt = new DateTime("1/23/2045 6:7:8.9101112");
         String fmt = "yyyy-MM-dd hh:mm:ss.SSSSSSSSS";
         assertEquals("2045-01-23 06:07:08.910111200", DateTimeFormat.format(fmt, dt));
     }
 
+    @Test
     public void testHTimeFormat() {
         IDateTimeConfig config = new EuroDateTimeConfig();
         DateTime dt = new DateTime("21.09.2012 - 21h48", config);
         assertEquals("2012-09-21 21:48:00", dt.toString());
     }
 
+    @Test
     public void testFormat_G_BC() {
         DateTime dt = new DateTime("1/23/2045 BC");
         String expect[] = {"BC", "BC", "BC", "BC"};
@@ -59,6 +88,7 @@ public class DateTimeFormatTester extends TestCase {
         compareFormat(dt, 'G', dt.config().getLocale());
     }
 
+    @Test
     public void testFormat_G_AD() {
         DateTime dt = new DateTime("1/23/2045");
         String expect[] = {"AD", "AD", "AD", "AD"};
@@ -66,18 +96,21 @@ public class DateTimeFormatTester extends TestCase {
         compareFormat(dt, 'G', dt.config().getLocale());
     }
 
+    @Test
     public void testFormat_g_BC() {
         DateTime dt = new DateTime("1/23/2045 BC");
         String expect[] = {"BCE", "BCE", "BCE", "BCE"};
         compareFormat(dt, 'g', expect);
     }
 
+    @Test
     public void testFormat_g_AD() {
         DateTime dt = new DateTime("1/23/2045");
         String expect[] = {"CE", "CE", "CE", "CE"};
         compareFormat(dt, 'g', expect);
     }
 
+    @Test
     public void testFormat_y_BC() {
         DateTime dt = new DateTime("1/23/2045 BC");
         String expect[] = {"-45", "-45", "-045", "-2045"};
@@ -94,6 +127,7 @@ public class DateTimeFormatTester extends TestCase {
         assertEquals("2045 BCE", dt.toString("yyyy g"));
     }
 
+    @Test
     public void testFormat_y_AD() {
         DateTime dt = new DateTime("1/23/2045 6:7:8.9101112");
         String expect[] = {"45", "45", "045", "2045"};
@@ -102,6 +136,7 @@ public class DateTimeFormatTester extends TestCase {
         // DateTime.format truncates "yyy" to three-digit year.
     }
 
+    @Test
     public void testFormat_M() {
         DateTime dt = new DateTime("1/23/2045 6:7:8.9101112");
         String expect[] = {"1", "01", "Jan", "January"};
@@ -109,6 +144,7 @@ public class DateTimeFormatTester extends TestCase {
         compareFormat(dt, 'M', expect);
     }
 
+    @Test
     public void testFormat_M_FR() {
         DateTimeConfigBuilder builder = configBuilder();
         builder.setLocale(Locale.FRENCH);
@@ -119,6 +155,7 @@ public class DateTimeFormatTester extends TestCase {
         compareFormat(dt, 'M', expect);
     }
 
+    @Test
     public void testFormat_M_DE() {
         DateTimeConfigBuilder builder = configBuilder();
         builder.setLocale(Locale.GERMAN);
@@ -129,19 +166,21 @@ public class DateTimeFormatTester extends TestCase {
         compareFormat(dt, 'M', expect);
     }
 
+    @Test
     public void testFormat_M_IT() {
         DateTimeConfigBuilder builder = configBuilder();
         builder.setLocale(Locale.ITALIAN);
         DateTimeConfig dtc = DateTimeConfig.fromBuilder(builder);
         DateTime dt = new DateTime("1/23/2045 6:7:8.9101112", dtc);
         String expect[] = {"1", "01", "gen", "gennaio"};
-        compareFormat(dt, 'M', Locale.ITALIAN);
+        compareFormatIgnoreCase(dt, 'M', Locale.ITALIAN);
         compareFormat(dt, 'M', expect);
     }
 
     /**
      * Differs from SimpleDateTime. This version uses RFC-8601 definition of week-in-month
      */
+    @Test
     public void testFormat_W() { // Week in month
         // Dec 1 2014 starts on a Monday
         DateTime dt = new DateTime("12/13/2014 15:16:17:18.192021");
@@ -150,6 +189,7 @@ public class DateTimeFormatTester extends TestCase {
         compareFormat(dt, 'W', expect);
     }
 
+    @Test
     public void testFormat_W_ranges() { // Week in month
         // ISO 8601 bases month placement of Mon-Sun week by where Thu lies.
         assertEquals("1", new DateTime("01/01/1998").toString("W"));
@@ -160,6 +200,7 @@ public class DateTimeFormatTester extends TestCase {
         assertEquals("4", new DateTime("12/31/2000").toString("W"));
     }
 
+    @Test
     public void testFormat_w() { // Week in year
         DateTime dt = new DateTime("12/13/2014 15:16:17:18.192021");
         String expect[] = {"50", "50", "050", "0050"};
@@ -167,6 +208,7 @@ public class DateTimeFormatTester extends TestCase {
         compareFormat(dt, 'w', expect);
     }
 
+    @Test
     public void testFormat_w_ranges() { // Week in year
         // ISO 8601 bases month placement of Mon-Sun week by where Thu lies.
         assertEquals("1", new DateTime("01/01/1998").toString("w"));
@@ -177,6 +219,7 @@ public class DateTimeFormatTester extends TestCase {
         assertEquals("52", new DateTime("12/31/2000").toString("w"));
     }
 
+    @Test
     public void testFormat_D() { // Day of the year
         DateTime dt = new DateTime("2/23/2045 6:7:8.9101112");
         String expect[] = {"54", "54", "054", "0054"};
@@ -184,6 +227,7 @@ public class DateTimeFormatTester extends TestCase {
         compareFormat(dt, 'D', expect);
     }
 
+    @Test
     public void testFormat_d() { // Day of month
         DateTime dt = new DateTime("4/4/2045 6:7:8.9101112");
         String expect[] = {"4", "04", "004", "0004"};
@@ -191,6 +235,7 @@ public class DateTimeFormatTester extends TestCase {
         compareFormat(dt, 'd', expect);
     }
 
+    @Test
     public void testFormat_E() { // Day of week
         // 12/31/1998 is a Wednesday
         DateTime dt = new DateTime("12/31/1997 15:16:17.192021");
@@ -199,6 +244,7 @@ public class DateTimeFormatTester extends TestCase {
         compareFormat(dt, 'E', expect);
     }
 
+    @Test
     public void testFormat_F() { // Numeric day of week in month
         // Dec 1 2014 starts on a Monday
         DateTime dt = new DateTime("12/13/2014 15:16:17.192021");
@@ -207,6 +253,7 @@ public class DateTimeFormatTester extends TestCase {
         compareFormat(dt, 'F', expect);
     }
 
+    @Test
     public void testFormat_a_AM() { // AM / PM
         // Dec 1 2014 starts on a Monday
         DateTime dt = new DateTime("12/13/2014 00:16:17.192021");
@@ -215,6 +262,7 @@ public class DateTimeFormatTester extends TestCase {
         compareFormat(dt, 'a', expect);
     }
 
+    @Test
     public void testFormat_a_PM() { // AM / PM
         // Dec 1 2014 starts on a Monday
         DateTime dt = new DateTime("12/13/2014 15:16:17.192021");
@@ -223,6 +271,7 @@ public class DateTimeFormatTester extends TestCase {
         compareFormat(dt, 'a', expect);
     }
 
+    @Test
     public void testFormat_H() { // 24 hour
         DateTime dt = new DateTime("12/13/2014 15:16:17.192021");
         String expect[] = {"15", "15", "015", "0015"};
@@ -230,6 +279,7 @@ public class DateTimeFormatTester extends TestCase {
         compareFormat(dt, 'H', expect);
     }
 
+    @Test
     public void testFormat_h() { // 12 hour
         DateTime dt = new DateTime("12/13/2014 15:16:17.192021");
         String expect[] = {"3", "03", "003", "0003"};
@@ -237,6 +287,7 @@ public class DateTimeFormatTester extends TestCase {
         compareFormat(dt, 'h', expect);
     }
 
+    @Test
     public void testFormat_k() { // 24 hour 1-24
         DateTime dt = new DateTime("12/13/2014 15:16:17.192021");
         String expect[] = {"15", "15", "015", "0015"};
@@ -244,6 +295,7 @@ public class DateTimeFormatTester extends TestCase {
         compareFormat(dt, 'k', expect);
     }
 
+    @Test
     public void testFormat_K() { // 24 hour 1-24
         DateTime dt = new DateTime("12/13/2014 15:16:17.192021");
         String expect[] = {"3", "03", "003", "0003"};
@@ -251,6 +303,7 @@ public class DateTimeFormatTester extends TestCase {
         compareFormat(dt, 'K', expect);
     }
 
+    @Test
     public void testFormat_m() { // minute
         DateTime dt = new DateTime("12/13/2014 15:16:17.192021");
         String expect[] = {"16", "16", "016", "0016"};
@@ -258,6 +311,7 @@ public class DateTimeFormatTester extends TestCase {
         compareFormat(dt, 'm', expect);
     }
 
+    @Test
     public void testFormat_s() { // second
         DateTime dt = new DateTime("12/13/2014 15:16:17.192021");
         String expect[] = {"17", "17", "017", "0017"};
@@ -265,6 +319,7 @@ public class DateTimeFormatTester extends TestCase {
         compareFormat(dt, 's', expect);
     }
 
+    @Test
     public void testFormat_z() { // time zone descriptive
         DateTime dt = new DateTime("12/13/2014 15:16:17.192021 PST");
         SimpleDateFormat sdf = new SimpleDateFormat("z zz zzz zzzz");
@@ -276,17 +331,24 @@ public class DateTimeFormatTester extends TestCase {
     /**
      * Differs from SimpleDateTime ZZ inserts a colon between hours and minutes
      */
+    @Test
     public void testFormat_Z() { // time zone descriptive
         DateTime dt = new DateTime("12/13/2014 15:16:17.192021 PST");
         SimpleDateFormat sdf = new SimpleDateFormat("Z ZZ ZZZ ZZZZ");
         String times = sdf.format(dt.toDate()).replaceAll("( -\\d\\d)", "$1:");
         String expect[] = times.split(" ", 4);
+        for(int i = 1; i < 4; i++) {
+            if (! expect[i].contains(":")) {
+                expect[i] = expect[i].substring(0, 3) + ":" + expect[i].substring(3);
+            }
+        }
         compareFormat(dt, 'Z', expect);
     }
 
     /**
      * Differs from SimpleDateTime S represents fractional seconds, not just milliseconds
      */
+    @Test
     public void testFormat_S() { // sub-second
         DateTime dt = new DateTime("12/13/2014 15:16:17.192021");
         String expect[] = {"1", "19", "192", "1920", "19202", "192021", "1920210"};
@@ -308,11 +370,14 @@ public class DateTimeFormatTester extends TestCase {
      * @param expected   output expected for 1 char, 2 chars, ..., n+1 chars
      */
     private void compareFormat(DateTime dt, char formatChar, String[] expected) {
+        String[] actual = new String[expected.length];
         StringBuilder sb = new StringBuilder();
+        int i = 0;
         for (String element : expected) {
             sb.append(formatChar);
-            assertEquals(element, dt.toString(sb.toString()));
+            actual[i++] = dt.toString(sb.toString());
         }
+        Assert.assertArrayEquals(expected, actual);
     }
 
     /**
@@ -329,11 +394,34 @@ public class DateTimeFormatTester extends TestCase {
             Locale orig = Locale.getDefault();
             SimpleDateFormat sdf = new SimpleDateFormat(sb.toString(), loc);
             Locale.setDefault(loc);
-            assertEquals(sdf.format(dt.toDate()), dt.toString(sb.toString(), loc));
-            Locale.setDefault(orig);
+            try {
+                final String actual = dt.toString(sb.toString(), loc);
+                final String expected = sdf.format(dt.toDate());
+                assertEquals(expected, actual);
+            } finally {
+                Locale.setDefault(orig);
+            }
         }
     }
 
+    private void compareFormatIgnoreCase(DateTime dt, char formatChar, Locale loc) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 4; i++) {
+            sb.append(formatChar);
+            Locale orig = Locale.getDefault();
+            SimpleDateFormat sdf = new SimpleDateFormat(sb.toString(), loc);
+            Locale.setDefault(loc);
+            try {
+                final String actual = dt.toString(sb.toString(), loc);
+                final String expected = sdf.format(dt.toDate());
+                assertTrue(expected.equalsIgnoreCase(actual));
+            } finally {
+                Locale.setDefault(orig);
+            }
+        }
+    }
+
+    @Test
     public void testLocale() {
         DateTime dt = new DateTime("2008-01-09 PST");
         compareStatic("zzzz", dt, Locale.FRENCH);

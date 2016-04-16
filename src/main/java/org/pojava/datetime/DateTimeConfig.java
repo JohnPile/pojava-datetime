@@ -75,6 +75,8 @@ public class DateTimeConfig implements IDateTimeConfig, Serializable {
 
     private MonthMap monthMap;
 
+    private CalendarSupplier calendarSupplier = DefaultCalendarSupplier.INSTANCE;
+
     /**
      * <p>
      * Support parsing of zones unlisted in TimeZone by translating to known zones. Got a zone
@@ -277,6 +279,11 @@ public class DateTimeConfig implements IDateTimeConfig, Serializable {
         return System.currentTimeMillis();
     }
 
+    @Override
+    public CalendarSupplier getCalendarSupplier() {
+        return calendarSupplier;
+    }
+
     public static void setGlobalDefaultFromBuilder(DateTimeConfigBuilder builder) {
         globalDefault = fromBuilder(builder);
     }
@@ -295,6 +302,7 @@ public class DateTimeConfig implements IDateTimeConfig, Serializable {
         dtc.outputTimeZone = builder.getOutputTimeZone();
         dtc.tzMap.putAll(builder.getTzMap());
         dtc.tzCache.putAll(builder.getTzCache());
+        dtc.calendarSupplier = builder.getCalendarSupplier();
         dtc.validate();
         return dtc;
     }

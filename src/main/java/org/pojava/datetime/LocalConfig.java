@@ -102,4 +102,9 @@ public class LocalConfig implements IDateTimeConfig {
     public void validate() {
         config.validate();
     }
+
+    @Override
+    public CalendarSupplier getCalendarSupplier() {
+        return config.getCalendarSupplier();
+    }
 }

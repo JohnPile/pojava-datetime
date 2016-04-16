@@ -20,9 +20,9 @@ import java.io.Serializable;
 import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
-import java.util.regex.Pattern;
 
 /**
  * <p>
@@ -97,8 +97,6 @@ public class DateTime implements Serializable, Comparable<DateTime> {
      * year every year evenly divisible by 4, except for years divisible by 100 but not divisible by 400.
      */
     protected Duration systemDur = null;
-
-    private static final Pattern partsPattern = Pattern.compile("[^\\p{L}\\d]+");
 
     /**
      * Default constructor gives current time to millisecond.
@@ -273,19 +271,18 @@ public class DateTime implements Serializable, Comparable<DateTime> {
     /**
      * Derive a time zone descriptor from the right side of the date/time string.
      *
-     * @param str String to parse date/time
+     * @param tzStr String to parse date/time
      * @return TimeZone id descriptor extracted from string (null if not found)
      */
-    private static String tzParse(String str) {
-        char[] chars = str.toCharArray();
+    private static MutableString tzParse(MutableString tzStr) {
         int min = 7; // Any less than 7 characters from left would encroach on the date itself
-        int max = str.length() - 1;
+        int max = tzStr.length() - 1;
         int idx = max;
         char c = '\0';
         // Working right to left, skip past numbers, colons, and four-digit years
         boolean digitsOnly=true;
         while (idx > min) {
-            c = chars[idx];
+            c = tzStr.charAt(idx);
             if (c >= '0' && c <= '9' || c == ' ' && idx==max-4 && digitsOnly) {
                 idx--;
             } else if (c == ':') {
@@ -297,11 +294,11 @@ public class DateTime implements Serializable, Comparable<DateTime> {
         }
         // Recognize numeric offset such as -0800 or +05:30
         if (idx >= min && (c == '+' || c == '-')) {
-            return str.substring(idx);
+            return tzStr.subSequence(idx, tzStr.length());
         }
         // Still here?  Looking for a non-numeric time zone like "EST" or "America/New_York"
         while (idx >= min) {
-            c = chars[idx];
+            c = tzStr.charAt(idx);
             if (c >= 'A' && c <= 'Z' || c == '_' || c == '/' || c >= '0' && c <= '9') {
                 // rewind to just before the beginning of a word
                 idx--;
@@ -309,7 +306,7 @@ public class DateTime implements Serializable, Comparable<DateTime> {
                 // set index to first character of that word
                 ++idx;
                 // skip past any numbers
-                while (idx < max && chars[idx] >= '0' && chars[idx] <= '9') {
+                while (idx < max && tzStr.charAt(idx) >= '0' && tzStr.charAt(idx) <= '9') {
                     if (++idx == max) {
                         break;
                     }
@@ -320,9 +317,9 @@ public class DateTime implements Serializable, Comparable<DateTime> {
         if (idx < min || idx > max) {
             return null;
         }
-        c = chars[idx];
+        c = tzStr.charAt(idx);
         if (c >= 'A' && c <= 'Z') {
-            return str.substring(idx);
+            return tzStr.subSequence(idx, tzStr.length());
         }
         return null;
     }
@@ -598,17 +595,18 @@ public class DateTime implements Serializable, Comparable<DateTime> {
     /**
      * Parse a time reference that fits in a single word. Supports: YYYYMMDD, [+-]D, [0-9]+Y
      *
-     * @param str    Date/Time string to be parsed.
+     * @param relativeDateStr    Date/Time string to be parsed.
      * @param config Configuration parameters governing parsing and presentation.
      * @return New DateTime interpreted from string.
      */
-    private static DateTime parseRelativeDate(String str, IDateTimeConfig config) {
-        char firstChar = str.charAt(0);
-        char lastChar = str.charAt(str.length() - 1);
+    private static DateTime parseRelativeDate(MutableString relativeDateStr, IDateTimeConfig config) {
+        char firstChar = relativeDateStr.charAt(0);
+        char lastChar = relativeDateStr.charAt(relativeDateStr.length() - 1);
         DateTime dt = new DateTime(config);
         if ((firstChar == '+' || firstChar == '-') && lastChar >= '0' && lastChar <= '9') {
-            if (onlyDigits(str.substring(1))) {
-                int offset = new Integer((firstChar == '+') ? str.substring(1) : str);
+            if (relativeDateStr.onlyDigits(1, relativeDateStr.length())) {
+                int offset = relativeDateStr.parseInt(0, relativeDateStr.length());
+                        //new Integer((firstChar == '+') ? str.substring(1) : str);
                 return dt.add(CalendarUnit.DAY, offset);
             }
         }
@@ -621,21 +619,13 @@ public class DateTime implements Serializable, Comparable<DateTime> {
             } else {
                 unit = CalendarUnit.MONTH;
             }
-            String inner = str.substring((firstChar >= '0' && firstChar <= '9') ? 0 : 1, str.length() - 1);
-            // ^[+-][0-9]+$
-            if (firstChar == '+') {
-                if (onlyDigits(inner)) {
-                    int offset = new Integer(inner);
-                    return dt.add(unit, offset);
-                }
-            }
-            if ((firstChar == '-' || firstChar >= '0' && firstChar <= '9') && isInteger(inner)) {
-                String offset = firstChar == '-' ? "-" + inner : inner;
-                int innerVal = new Integer(offset);
-                return dt.add(unit, innerVal);
+            MutableString inner = relativeDateStr.subSequence(0, relativeDateStr.length() - 1);
+
+            if (inner.isInteger()) {
+                return dt.add(unit, inner.parseInt());
             }
         }
-        throw new IllegalArgumentException("Could not parse date from '" + str + "'");
+        throw new IllegalArgumentException("Could not parse date from '" + relativeDateStr + "'");
     }
 
     /**
@@ -672,7 +662,7 @@ public class DateTime implements Serializable, Comparable<DateTime> {
         int minute;
         int second;
         int nanosecond;
-        String[] parts;
+        List<MutableString> parts;
         boolean[] integers;
         boolean[] usedint;
     }
@@ -680,9 +670,10 @@ public class DateTime implements Serializable, Comparable<DateTime> {
     public static void assignIntegersToRemainingSlots(IDateTimeConfig config, HasDatepart hasDatepart,
                                                       DateState dateState) {
         // Assign integers to remaining slots in order
-        for (int i = 0; i < dateState.parts.length; i++) {
+        for (int i = 0; i < dateState.parts.size(); i++) {
             if (dateState.integers[i] && !dateState.usedint[i]) {
-                int part = parseIntFragment(dateState.parts[i]);
+                MutableString charPart = dateState.parts.get(i);
+                int part = charPart.parseInt();
                 if (!hasDatepart.day && part < 32 && config.isDmyOrder()) {
                     /*
                      * If one sets the isDmyOrder to true in DateTimeConfig, then this will properly interpret DD before MM in
@@ -738,12 +729,13 @@ public class DateTime implements Serializable, Comparable<DateTime> {
                     }
                     dateState.hour = part;
                     hasDatepart.hour = true;
-                    if (dateState.parts[i].indexOf('H') == -1) {
+                    if (charPart.indexOf('H') == -1) {
                         dateState.usedint[i] = true;
                         continue;
                     }
-                    dateState.parts[i] = dateState.parts[i].substring(dateState.parts[i].indexOf('H') + 1);
-                    part = parseIntFragment(dateState.parts[i]);
+                    charPart = charPart.subSequence(charPart.indexOf('H') + 1);
+                    dateState.parts.set(i, charPart);
+                    part = charPart.parseInt();
                 }
                 if (!hasDatepart.minute) {
                     if (part >= 60) {
@@ -751,12 +743,14 @@ public class DateTime implements Serializable, Comparable<DateTime> {
                     }
                     dateState.minute = part;
                     hasDatepart.minute = true;
-                    if (dateState.parts[i].indexOf('M') == -1) {
+                    if (charPart.indexOf('M') == -1) {
                         dateState.usedint[i] = true;
                         continue;
                     }
-                    dateState.parts[i] = dateState.parts[i].substring(dateState.parts[i].indexOf('M') + 1);
-                    part = parseIntFragment(dateState.parts[i]);
+
+                    charPart = charPart.subSequence(charPart.indexOf('M') + 1);
+                    dateState.parts.set(i, charPart);
+                    part =  charPart.parseInt();
                 }
                 if (!hasDatepart.second) {
                     if (part < 60 || part == 60 && dateState.minute == 59 && dateState.hour == 23 && dateState.day >= 30
@@ -773,7 +767,12 @@ public class DateTime implements Serializable, Comparable<DateTime> {
                     if (part >= 1000000000) {
                         throw new IllegalArgumentException("Invalid nanosecond parsed from [" + part + "].");
                     }
-                    dateState.nanosecond = Integer.parseInt((dateState.parts[i].split("[^0-9]+")[0] + "00000000").substring(0, 9));
+                    final MutableString nsPart = charPart.split(NotNumericPredicate.INSTANCE).get(0);
+                    int ns = nsPart.parseInt();
+                    for(int j = nsPart.length(); j < 9; j++) {
+                        ns *= 10;
+                    }
+                    dateState.nanosecond = ns;
                     hasDatepart.nanosecond = true;
                     dateState.usedint[i] = true;
                 }
@@ -784,9 +783,10 @@ public class DateTime implements Serializable, Comparable<DateTime> {
     private static void scanForTextualMonth(IDateTimeConfig config, HasDatepart hasDatepart,
                                             DateState dateState) {
         // First, scan for text month
-        for (int i = 0; i < dateState.parts.length; i++) {
-            if (!dateState.integers[i] && dateState.parts[i].length() > 2) {
-                Integer monthIndex = config.lookupMonthIndex(dateState.parts[i]);
+        for (int i = 0; i < dateState.parts.size(); i++) {
+            MutableString mutableString = dateState.parts.get(i);
+            if (!dateState.integers[i] && mutableString.length() > 2) {
+                Integer monthIndex = config.lookupMonthIndex(mutableString.toString());
 
                 if (monthIndex != null) {
                     dateState.month = monthIndex;
@@ -805,7 +805,7 @@ public class DateTime implements Serializable, Comparable<DateTime> {
         /**
          * Adjust 12AM and 1-11PM.
          */
-        for (String part : dateState.parts) {
+        for (MutableString part : dateState.parts) {
             if (part.endsWith("M")) {
                 if (part.endsWith("PM") && dateState.hour > 0 && dateState.hour < 12) {
                     dateState.hour += 12;
@@ -818,26 +818,27 @@ public class DateTime implements Serializable, Comparable<DateTime> {
 
     private static void scanForYYYYOrYYYYMMDD(IDateTimeConfig config, HasDatepart hasDatepart, DateState dateState) {
         // Scan for 4-digit year or an 8 digit YYYYMMDD
-        for (int i = 0; i < dateState.parts.length; i++) {
+        for (int i = 0; i < dateState.parts.size(); i++) {
             if (dateState.integers[i] && !dateState.usedint[i]) {
-                if (!hasDatepart.year && (dateState.parts[i].length() == 4 || dateState.parts[i].length() == 5)) {
-                    char c = dateState.parts[i].charAt(dateState.parts[i].length() - 1);
+                MutableString mutableString = dateState.parts.get(i);
+                if (!hasDatepart.year && (mutableString.length() == 4 || mutableString.length() == 5)) {
+                    char c = mutableString.charAt(mutableString.length() - 1);
                     if (c >= '0' && c <= '9') {
-                        dateState.year = parseIntFragment(dateState.parts[i]);
+                        dateState.year = mutableString.parseInt();
                         hasDatepart.year = true;
                         dateState.usedint[i] = true;
                         dateState.isYearFirst = (i == 0);
                         // If integer is to the immediate left of year, use now.
                         if (config.isDmyOrder()) {
                             if (!hasDatepart.month && i > 0 && dateState.integers[i - 1] && !dateState.usedint[i - 1]) {
-                                dateState.month = parseIntFragment(dateState.parts[i - 1]);
+                                dateState.month = dateState.parts.get(i - 1).parseInt();
                                 dateState.month--;
                                 hasDatepart.month = true;
                                 dateState.usedint[i - 1] = true;
                             }
                         } else {
                             if (!hasDatepart.day && i > 0 && dateState.integers[i - 1] && !dateState.usedint[i - 1]) {
-                                dateState.day = parseIntFragment(dateState.parts[i - 1]);
+                                dateState.day = dateState.parts.get(i - 1).parseInt();
                                 hasDatepart.day = true;
                                 dateState.usedint[i - 1] = true;
                             }
@@ -845,11 +846,11 @@ public class DateTime implements Serializable, Comparable<DateTime> {
                         break;
                     }
                 }
-                if (!hasDatepart.year && !hasDatepart.month && !hasDatepart.day && dateState.parts[i].length() == 8) {
-                    dateState.year = Integer.parseInt(dateState.parts[i].substring(0, 4));
-                    dateState.month = Integer.parseInt(dateState.parts[i].substring(4, 6));
+                if (!hasDatepart.year && !hasDatepart.month && !hasDatepart.day && mutableString.length() == 8) {
+                    dateState.year = mutableString.subSequence(0, 4).parseInt();
+                    dateState.month = mutableString.subSequence(4, 6).parseInt();
                     dateState.month--;
-                    dateState.day = Integer.parseInt(dateState.parts[i].substring(6, 8));
+                    dateState.day = mutableString.subSequence(6, 8).parseInt();
                     hasDatepart.year = true;
                     hasDatepart.month = true;
                     hasDatepart.day = true;
@@ -882,16 +883,29 @@ public class DateTime implements Serializable, Comparable<DateTime> {
 
     }
 
-    private static String extract(String str, String remove) {
-        int pos=str.indexOf(remove);
-        int size=remove.length();
-        if (pos == str.length() - 1 - size) {
-            return str.substring(0, pos);
-        }
-        return str.substring(0, pos) + " " + str.substring(pos + size);
-    }
 
+    /**
+     *
+     if (tzCharArray.matches("[+-][0-9]{2}:[0-9]{2}")) {
+     } else if (tzCharArray.matches("[+-][0-9]{4}")) {
 
+     */
+    private static final CharPattern tzWithColumn =
+            new CharPattern(
+                    IsSign.INSTANCE,
+                    IsDigit.INSTANCE,
+                    IsDigit.INSTANCE,
+                    IsEqual.of(':'),
+                    IsDigit.INSTANCE,
+                    IsDigit.INSTANCE);
+
+    private static final CharPattern tz =
+            new CharPattern(
+                    IsSign.INSTANCE,
+                    IsDigit.INSTANCE,
+                    IsDigit.INSTANCE,
+                    IsDigit.INSTANCE,
+                    IsDigit.INSTANCE);
     /**
      * Interpret a DateTime from a String.
      *
@@ -904,60 +918,70 @@ public class DateTime implements Serializable, Comparable<DateTime> {
         HasDatepart hasDatepart = new HasDatepart();
         DateState dateState = new DateState();
 
+
         if (config == null) {
             config = DateTimeConfig.getGlobalDefault();
         }
         if (str == null) {
             return new DateTime(config.systemTime(), config);
         }
+
         // Normalize the string a bit
-        str = str.trim().toUpperCase(config.getLocale());
-        if (str.length() == 0) {
+        MutableString chars = new MutableString(str);
+        chars.trim().upperCase();
+
+        if (chars.length() == 0) {
             throw new IllegalArgumentException("Cannot parse DateTime from empty string.");
         }
-        if (str.indexOf('T') > 0) {
-            // Replace a T separator with a space separator.
-            str = str.replaceFirst("([0-9])T([0-9])", "$1 $2");
+
+        replaceT(chars);
+
+        if (chars.charAt(0) == '+' || chars.charAt(0) == '-') {
+            return parseRelativeDate(chars, config);
         }
-        if (str.charAt(0) == '+' || str.charAt(0) == '-') {
-            return parseRelativeDate(str, config);
-        }
-        if (str.matches(".*([0-9][A-Z]|[A-Z][0-9]).*")) {
-            // Expand dates that use number-to-alpha as implied separator
-            // Chars DMY are reserved for day, month, year relative dates
-            str = str.replaceAll("([0-9])(Z|[A-Y]{2})", "$1 $2");
-            str = str.replaceAll("([A-Z]{3})([0-9])", "$1 $2");
-        }
-        String tzString = tzParse(str);
-        if (tzString!=null && tzString.contains(" ")) {
-            tzString=tzString.substring(0, tzString.indexOf(' '));
-        }
-        if ("AM".equals(tzString) || "PM".equals(tzString)) {
-            tzString = null;
-        }
-        if ("BC".equals(tzString) || "BCE".equals(tzString)) {
-            tzString = null;
-            dateState.isBC = true;
-        }
-        if (tzString != null && tzString.endsWith("0")) {
-            if (tzString.matches("[+-][0-9]{2}:[0-9]{2}")) {
-                str = extract(str, tzString);
-                tzString = "GMT" + tzString;
-            } else if (tzString.matches("[+-][0-9]{4}")) {
-                str = extract(str, tzString);
-                tzString = "GMT" + tzString.substring(0, 3) + ":" + tzString.substring(3);
+
+        addSpaceBetweenAlphaAndNumber(chars);
+
+
+        str = chars.toString();
+
+        MutableString tzMutableString = tzParse(chars);
+        String tzString = null;
+        if (tzMutableString !=null) {
+            int indexOfSpace = tzMutableString.indexOf(' ');
+            if (indexOfSpace != -1) {
+                tzMutableString = tzMutableString.subSequence(0, indexOfSpace);
+            }
+            if (tzMutableString.matches("AM") || tzMutableString.matches("PM")) {
+                tzString = null;
+            } else if (tzMutableString.matches("BC") || tzMutableString.matches("BCE")) {
+                tzString = null;
+                dateState.isBC = true;
+            } else if (tzMutableString.endsWith("0")) {
+                if (tzWithColumn.matches(tzMutableString, 0)) {
+                    tzString = "GMT" + tzMutableString;
+                    chars.deleteWithArrayIndex(tzMutableString.getStartIndex(), tzMutableString.getEndIndex());
+                } else if (tz.matches(tzMutableString, 0)) {
+                    tzString = "GMT" + tzMutableString.subSequence(0, 3) + ":" + tzMutableString.subSequence(3);
+                    chars.deleteWithArrayIndex(tzMutableString.getStartIndex(), tzMutableString.getEndIndex());
+                }
+            }
+
+            if (tzString == null) {
+                tzString = tzMutableString.toString();
             }
         }
+        str = chars.toString();
         TimeZone tz = tzString == null ? config.getInputTimeZone() : config.lookupTimeZone(tzString);
         Tm tm = new Tm(config.systemTime(), tz);
-        dateState.parts = partsPattern.split(str);
+        dateState.parts = chars.split(NotAlphaOrNumberPredicate.INSTANCE);
         dateState.thisYear = tm.getYear();
         dateState.centuryTurn = dateState.thisYear - (dateState.thisYear % 100);
         // Build a table describing which fields are integers.
-        dateState.integers = new boolean[dateState.parts.length];
-        dateState.usedint = new boolean[dateState.parts.length];
-        for (int i = 0; i < dateState.parts.length; i++) {
-            if (startsWithDigit(dateState.parts[i])) {
+        dateState.integers = new boolean[dateState.parts.size()];
+        dateState.usedint = new boolean[dateState.parts.size()];
+        for (int i = 0; i < dateState.parts.size(); i++) {
+            if (startsWithDigit(dateState.parts.get(i))) {
                 dateState.integers[i] = true;
             }
         }
@@ -968,10 +992,11 @@ public class DateTime implements Serializable, Comparable<DateTime> {
         if (hasDatepart.year && dateState.year == 0) {
             throw new IllegalArgumentException("Invalid zero year parsed.");
         }
+
         // One more scan for Date.toString() style
-        if (!hasDatepart.year && hasDatepart.month && str.endsWith(" " + dateState.parts[dateState.parts.length - 1])) {
+        if (!hasDatepart.year && hasDatepart.month && str.endsWith(" " + dateState.parts.get(dateState.parts.size() - 1))) {
             if (str.length()>11 && str.substring(0, 11).matches("^([A-Z]{3} ){2}\\d\\d ")) {
-                dateState.year = Integer.parseInt(dateState.parts[dateState.parts.length - 1]);
+                dateState.year = dateState.parts.get(dateState.parts.size() - 1).parseInt();
                 hasDatepart.year = true;
                 dateState.usedint[dateState.usedint.length - 1] = true;
             }
@@ -992,7 +1017,16 @@ public class DateTime implements Serializable, Comparable<DateTime> {
         if (dateState.isBC && dateState.year >= 0) {
             dateState.year = -dateState.year + 1;
         }
-        DateTime returnDt = new DateTime(Tm.calcTime(dateState.year, 1 + dateState.month, dateState.day, dateState.hour, dateState.minute, dateState.second, dateState.nanosecond / 1000000, tz),
+        DateTime returnDt = new DateTime(
+                Tm.calcTime(
+                        dateState.year,
+                        1 + dateState.month,
+                        dateState.day,
+                        dateState.hour,
+                        dateState.minute,
+                        dateState.second,
+                        dateState.nanosecond / 1000000,
+                        tz, config.getCalendarSupplier()),
                 config);
 
         if (dateState.isTwoDigitYear && config.isUnspecifiedCenturyAlwaysInPast()) {
@@ -1004,6 +1038,41 @@ public class DateTime implements Serializable, Comparable<DateTime> {
 
         returnDt.systemDur.nanos = dateState.nanosecond;
         return returnDt;
+    }
+
+    private static boolean addSpaceBetweenAlphaAndNumber(MutableString chars) {
+
+        int previousChar = 0;
+        for(int i = 0; i < chars.length(); i++) {
+            if (chars.isDigit(i)) {
+                if (previousChar == 2) {
+                    chars.add(' ', i);
+                };
+                previousChar = 1;
+            } else if (chars.isAlpha(i)) {
+                if (previousChar == 1) {
+                    chars.add(' ', i);
+                };
+                previousChar = 2;
+            } else {
+                previousChar = 0;
+            }
+        }
+        return false;
+    }
+
+    private static void replaceT(MutableString chars) {
+        for(int i = 0; i < chars.length(); i++) {
+            char c = chars.charAt(i);
+            if (c == 'T'
+                    && i > 0
+                    && i < chars.length() -1
+                    && chars.isDigit(i - 1)
+                    && chars.isDigit(i + 1)) {
+                chars.setChar(i, ' ');
+                    break;
+            }
+        }
     }
 
     /**
@@ -1070,18 +1139,18 @@ public class DateTime implements Serializable, Comparable<DateTime> {
         }
         Tm tm = new Tm(this.systemDur.millis, config().getOutputTimeZone());
         if (unit == CalendarUnit.MONTH) {
-            return new DateTime(Tm.calcTime(tm.getYear(), tm.getMonth(), 1, 0, 0, 0, 0, config.getOutputTimeZone()), config);
+            return new DateTime(Tm.calcTime(tm.getYear(), tm.getMonth(), 1, 0, 0, 0, 0, config.getOutputTimeZone(), config.getCalendarSupplier()), config);
         }
         if (unit == CalendarUnit.QUARTER) {
             int monthOffset = (tm.getMonth() - 1) % 3;
             return new DateTime(
-                    Tm.calcTime(tm.getYear(), tm.getMonth() - monthOffset, 1, 0, 0, 0, 0, config.getOutputTimeZone()), config);
+                    Tm.calcTime(tm.getYear(), tm.getMonth() - monthOffset, 1, 0, 0, 0, 0, config.getOutputTimeZone(), config.getCalendarSupplier()), config);
         }
         if (unit == CalendarUnit.YEAR) {
-            return new DateTime(Tm.calcTime(tm.getYear(), 1, 1, 0, 0, 0, 0, config.getOutputTimeZone()), config);
+            return new DateTime(Tm.calcTime(tm.getYear(), 1, 1, 0, 0, 0, 0, config.getOutputTimeZone(), config.getCalendarSupplier()), config);
         }
         if (unit == CalendarUnit.CENTURY) {
-            return new DateTime(Tm.calcTime(tm.getYear() - tm.getYear() % 100, 1, 1, 0, 0, 0, 0, config.getOutputTimeZone()),
+            return new DateTime(Tm.calcTime(tm.getYear() - tm.getYear() % 100, 1, 1, 0, 0, 0, 0, config.getOutputTimeZone(), config.getCalendarSupplier()),
                     config);
         }
         throw new IllegalArgumentException("That precision is still unsupported.  Sorry, my bad.");
@@ -1161,85 +1230,16 @@ public class DateTime implements Serializable, Comparable<DateTime> {
     // ==========================================
 
     /**
-     * Parse an integer from left-to-right until non-digit reached
-     *
-     * @param str String to parse date/time
-     * @return first integer greedily matched from a string
-     */
-    private static int parseIntFragment(String str) {
-        if (str == null) {
-            return 0;
-        }
-        int parsed = 0;
-        boolean isNeg = false;
-        char[] strip = str.toCharArray();
-        char c = strip[0];
-        if (c == '-') {
-            isNeg = true;
-        } else if (c >= '0' && c <= '9') {
-            parsed = c - '0';
-        } else {
-            return 0;
-        }
-        for (int i = 1; i < strip.length; i++) {
-            c = strip[i];
-            if (c >= '0' && c <= '9') {
-                parsed = 10 * parsed + c - '0';
-            } else {
-                break;
-            }
-        }
-        return isNeg ? -parsed : parsed;
-    }
-
-    /**
      * True if a string starts with a digit.
      *
      * @param s string
      * @return true if string starts with a digit.
      */
-    private static boolean startsWithDigit(String s) {
+    private static boolean startsWithDigit(CharSequence s) {
         if (s == null || s.length() == 0) {
             return false;
         }
         char c = s.charAt(0);
         return (c >= '0' && c <= '9');
     }
-
-    /**
-     * True if a string has only digits in it.
-     *
-     * @param s String to verify
-     * @return true if string is composed of only digits.
-     */
-    private static boolean onlyDigits(String s) {
-        if (s == null || s.length() == 0) {
-            return false;
-        }
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c < '0' || c > '9') {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * True if a string matches /^[-]?[0-9]+$/
-     *
-     * @param s String to verify
-     * @return true if string is numeric
-     */
-    private static boolean isInteger(String s) {
-        if (s == null || s.length() == 0) {
-            return false;
-        }
-        char c = s.charAt(0);
-        if (s.length() == 1) {
-            return c >= '0' && c <= '9';
-        }
-        return (c == '-' || c >= '0' && c <= '9') && onlyDigits(s.substring(1));
-    }
-
 }
