@@ -79,7 +79,7 @@ public class MonthMapTester extends TestCase {
         assertEquals(4, monthMap.monthIndex("magg.").intValue());
         assertEquals(5, monthMap.monthIndex("giugno").intValue());
         assertEquals(6, monthMap.monthIndex("luglio").intValue());
-        assertEquals(7, monthMap.monthIndex("ag.").intValue());
+        assertEquals(7, monthMap.monthIndex("ago.").intValue());
         assertEquals(8, monthMap.monthIndex("sett.").intValue());
         assertEquals(9, monthMap.monthIndex("ott.").intValue());
         assertEquals(10, monthMap.monthIndex("nov.").intValue());
