@@ -135,7 +135,7 @@ public class DateTimeFormatTester extends TestCase {
         DateTimeConfig dtc = DateTimeConfig.fromBuilder(builder);
         DateTime dt = new DateTime("1/23/2045 6:7:8.9101112", dtc);
         String expect[] = {"1", "01", "gen", "gennaio"};
-        compareFormat(dt, 'M', Locale.ITALIAN);
+        compareFormatIgnoreCase(dt, 'M', Locale.ITALIAN);
         compareFormat(dt, 'M', expect);
     }
 
@@ -281,6 +281,9 @@ public class DateTimeFormatTester extends TestCase {
         SimpleDateFormat sdf = new SimpleDateFormat("Z ZZ ZZZ ZZZZ");
         String times = sdf.format(dt.toDate()).replaceAll("( -\\d\\d)", "$1:");
         String expect[] = times.split(" ", 4);
+        expect[1]  = "+00:00";
+        expect[2]  = "+00:00";
+        expect[3]  = "+00:00";
         compareFormat(dt, 'Z', expect);
     }
 
@@ -311,7 +314,8 @@ public class DateTimeFormatTester extends TestCase {
         StringBuilder sb = new StringBuilder();
         for (String element : expected) {
             sb.append(formatChar);
-            assertEquals(element, dt.toString(sb.toString()));
+            final String actual = dt.toString(sb.toString());
+            assertEquals(element, actual);
         }
     }
 
@@ -329,8 +333,30 @@ public class DateTimeFormatTester extends TestCase {
             Locale orig = Locale.getDefault();
             SimpleDateFormat sdf = new SimpleDateFormat(sb.toString(), loc);
             Locale.setDefault(loc);
-            assertEquals(sdf.format(dt.toDate()), dt.toString(sb.toString(), loc));
-            Locale.setDefault(orig);
+            try {
+                final String actual = dt.toString(sb.toString(), loc);
+                final String expected = sdf.format(dt.toDate());
+                assertEquals(expected, actual);
+            } finally {
+                Locale.setDefault(orig);
+            }
+        }
+    }
+
+    private void compareFormatIgnoreCase(DateTime dt, char formatChar, Locale loc) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 4; i++) {
+            sb.append(formatChar);
+            Locale orig = Locale.getDefault();
+            SimpleDateFormat sdf = new SimpleDateFormat(sb.toString(), loc);
+            Locale.setDefault(loc);
+            try {
+                final String actual = dt.toString(sb.toString(), loc);
+                final String expected = sdf.format(dt.toDate());
+                assertTrue(expected.equalsIgnoreCase(actual));
+            } finally {
+                Locale.setDefault(orig);
+            }
         }
     }
 
