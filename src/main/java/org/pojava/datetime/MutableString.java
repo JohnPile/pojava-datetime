@@ -168,7 +168,7 @@ public class MutableString implements CharSequence {
     }
 
     public List<MutableString> split(CharPredicate predicate) {
-        List<MutableString> list = new ArrayList<MutableString>();
+        List<MutableString> list = new ArrayList<MutableString>(10);
 
         int startIndex = 0;
         boolean hasContent = false;

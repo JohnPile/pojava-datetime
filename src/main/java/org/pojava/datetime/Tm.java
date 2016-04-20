@@ -249,9 +249,18 @@ public class Tm {
      * @param tz    time zone in which the date parts are given
      * @return number of milliseconds since Epoch
      */
+
+    private final static ThreadLocal<Calendar> calendarThreadLocal = new ThreadLocal<Calendar>() {
+        @Override
+        protected Calendar initialValue() {
+            return Calendar.getInstance();
+        }
+    };
     public static long calcTime(int year, int month, int day, int hour, int min, int sec,
                                 int milli, TimeZone tz) {
-        Calendar cal = Calendar.getInstance(tz);
+        Calendar cal = calendarThreadLocal.get();
+        cal.setTimeZone(tz);
+        cal.set(Calendar.ERA, GregorianCalendar.AD);
         cal.set(Calendar.YEAR, year);
         cal.set(Calendar.MONTH, month - 1);
         cal.set(Calendar.DAY_OF_MONTH, day);
