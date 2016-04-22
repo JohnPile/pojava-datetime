@@ -1,35 +1,61 @@
 package org.pojava.datetime;
 
-import junit.framework.TestCase;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.pojava.datetime.examples.FixedTimeLocalConfig;
 
 import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
 
-public class DateTimeTester extends TestCase {
+import static org.junit.Assert.*;
+
+@RunWith(Parameterized.class)
+public class DateTimeTester {
+
+    @Parameterized.Parameters
+    public static Collection<Object[]> data() {
+        return Arrays.asList(new Object[][] {
+                { null }, { DefaultCalendarSupplier.INSTANCE }, { new ThreadLocalCalendarSupplier() }
+        });
+    }
+
 
     private final TimeZone localTz = TimeZone.getDefault();
+    private final CalendarSupplier calendarSupplier;
+
+
+    public DateTimeTester(CalendarSupplier calendarSupplier) {
+        this.calendarSupplier = calendarSupplier;
+    }
 
     private DateTimeConfigBuilder configBuilder() {
         DateTimeConfigBuilder dtcBuilder = DateTimeConfigBuilder.newInstance();
         TimeZone tz = TimeZone.getDefault();
+
         dtcBuilder.setMonthMap(MonthMap.fromAllLocales());
         dtcBuilder.getTzMap().put("Z", "UTC");
         dtcBuilder.getTzCache().put(tz.getID(), tz);
         dtcBuilder.setDmyOrder(false);
         dtcBuilder.setInputTimeZone(TimeZone.getTimeZone("EST"));
         dtcBuilder.setOutputTimeZone(TimeZone.getTimeZone("EST"));
+        if (calendarSupplier != null) {
+            dtcBuilder.setCalendarSupplier(calendarSupplier);
+        }
         return dtcBuilder;
     }
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
+    @Before
+    public void setUp() throws Exception {
         // Ensure that a different default TimeZone doesn't influence results.
         TimeZone.setDefault(TimeZone.getTimeZone("PST"));
         TimeZone tz = TimeZone.getTimeZone("America/New_York");
@@ -40,9 +66,8 @@ public class DateTimeTester extends TestCase {
         DateTimeConfig.setGlobalDefault(config);
     }
 
-    @Override
-    protected void tearDown() throws Exception {
-        super.tearDown();
+    @After
+    public void tearDown() throws Exception {
         TimeZone.setDefault(localTz);
         DateTimeConfig.setGlobalDefault(null);
     }
@@ -50,6 +75,7 @@ public class DateTimeTester extends TestCase {
     /**
      * Verifying fix of a bug reported as a patch in version 2.3.0
      */
+    @Test
     public void testSteveZone() {
         TimeZone.setDefault(TimeZone.getTimeZone("EST"));
         DateTimeConfigBuilder builder = configBuilder();
@@ -64,6 +90,7 @@ public class DateTimeTester extends TestCase {
     /**
      * Test for the parsed ".987" in both millis and nanos.
      */
+    @Test
     public void testDateToMillis() {
         DateTime dt = DateTime.parse("2008-05-16 01:23:45.987 PST");
         assertEquals(987, dt.toMillis() % 1000);
@@ -73,6 +100,7 @@ public class DateTimeTester extends TestCase {
     /**
      * Truncate to any precision defined in CalendarUnit
      */
+    @Test
     public void testTruncate() {
         DateTime dt = DateTime.parse("2008-08-08 03:02:01.123456789");
         String format = "yyyy-MM-dd HH:mm:ss.SSS";
@@ -105,6 +133,7 @@ public class DateTimeTester extends TestCase {
         assertEquals("1900-01-01 00:00:00.000", dt.truncate(CalendarUnit.CENTURY).toString(format));
     }
 
+    @Test
     public void testToString() {
         String format = "yyyy-MM-dd HH:mm:ss.SSS";
         DateTime dt;
@@ -118,6 +147,7 @@ public class DateTimeTester extends TestCase {
     /**
      * The Tm structure is another representation of time.
      */
+    @Test
     public void testTm() {
 
         Tm tm = new Tm(new DateTime("1965-06-30 03:04:05.6789"));
@@ -143,6 +173,7 @@ public class DateTimeTester extends TestCase {
      * Adding Calendar Units shifts a date part, leaving others the same. Notably, it should adjust to compensate for Daylight
      * Saving Time.
      */
+    @Test
     public void testAddCalendarUnits() {
         String format = "yyyy-MM-dd HH:mm:ss.SSS";
         DateTime dt = DateTime.parse("1955-06-14 02:03:04.123456789");
@@ -171,6 +202,7 @@ public class DateTimeTester extends TestCase {
         assertEquals("3055-06-14 02:03:04.123", dtNew.toString(format));
     }
 
+    @Test
     public void testLanguages() {
         // English
         assertEquals("1969-01-26 00:00:00", new DateTime("1969,1,26").toString());
@@ -191,6 +223,7 @@ public class DateTimeTester extends TestCase {
         assertEquals("2013-07-12 00:00:00", new DateTime("il 12 luglio del 2013").toString());
     }
 
+    @Test
     public void testLeap() {
         assertEquals("2000-02-29 00:00:00", new DateTime("2000-02-29 00:00:00").toString());
     }
@@ -202,6 +235,7 @@ public class DateTimeTester extends TestCase {
      * Dates represented in BCE (before 0001) by Date.toString() cannot be distinguished from similar dates in CE. Dates after
      * 9999 are addressable, but not interpreted as a year by DateTime.
      */
+    @Test
     public void testConsistency() {
         // The year 0001
         long millis = -62135700000000L;
@@ -232,6 +266,7 @@ public class DateTimeTester extends TestCase {
     /**
      * This tests behavior for leap year calculations.
      */
+    @Test
     public void testLeapYears() {
         // 100 year leap year exception
         assertEquals("1900-02-28 23:59:59", new DateTime("1900-03-01").add(-1).toString());
@@ -239,16 +274,19 @@ public class DateTimeTester extends TestCase {
         assertEquals("1902-02-28 23:59:59", new DateTime("1902-03-01").add(-1).toString());
     }
 
+    @Test
     public void testRegularYearLeap() {
         // Regular leap year
         assertEquals("1904-02-29 23:59:59", new DateTime("1904-03-01").add(-1).toString());
     }
 
+    @Test
     public void testThousandYearLeap() {
         // 1000 year leap year inclusion
         assertEquals("1000-02-29 23:59:59", new DateTime("1000-03-01").add(-1).toString());
     }
 
+    @Test
     public void testEdgeCases() {
         // Add Month to January 30
         assertEquals("2008-02-29 00:00:00", new DateTime("2008-01-30").add(CalendarUnit.MONTH, 1).toString());
@@ -257,6 +295,7 @@ public class DateTimeTester extends TestCase {
     /**
      * Test whether DateTime calculates the same day of week that the Calendar class does.
      */
+    @Test
     public void testDow() {
         long timer = System.currentTimeMillis();
         TimeZone.setDefault(DateTimeConfig.getGlobalDefault().getOutputTimeZone());
@@ -271,12 +310,14 @@ public class DateTimeTester extends TestCase {
         assertEquals(Calendar.THURSDAY, new DateTime(-40 * Duration.WEEK + Duration.DAY, tz).weekday());
     }
 
+    @Test
     public void testCompareTo() {
         DateTime dt1 = new DateTime(12345);
         DateTime dt2 = new DateTime(12346);
         assertTrue(dt1.compareTo(dt2) < 0);
     }
 
+    @Test
     public void testRelativeDateMinus() {
         long start = System.currentTimeMillis();
         DateTime dt1 = new DateTime();
@@ -297,6 +338,7 @@ public class DateTimeTester extends TestCase {
         assertTrue(diff <= dur);
     }
 
+    @Test
     public void testRelativeDatePlusD() {
         long start = System.currentTimeMillis();
         DateTime dt1 = new DateTime();
@@ -309,6 +351,7 @@ public class DateTimeTester extends TestCase {
         assertTrue(diff <= dur);
     }
 
+    @Test
     public void testRelativeDateMinusD() {
         long start = System.currentTimeMillis();
         DateTime dt1 = new DateTime();
@@ -324,6 +367,7 @@ public class DateTimeTester extends TestCase {
     /**
      * It is always prudent to verify that your examples actually work :)
      */
+    @Test
     public void testJavaDocClaims() {
         DateTime dt1 = new DateTime("3:21pm on January 26, 1969");
         DateTime dt2 = new DateTime("26-Jan-1969 03:21 PM");
@@ -339,6 +383,7 @@ public class DateTimeTester extends TestCase {
     /**
      * This looks for a broad spectrum of issues, spanning different times of day, days of the month, leap and non-leap years.
      */
+    @Test
     public void testFourYearsDaily() {
         IDateTimeConfig config = DateTimeConfig.getGlobalDefault();
         TimeZone.setDefault(config.getInputTimeZone());
@@ -353,6 +398,7 @@ public class DateTimeTester extends TestCase {
         }
     }
 
+    @Test
     public void test1600() {
         DateTime leap = new DateTime("1200-03-01");
         assertEquals("1200-03-01 00:00:00", leap.toString());
@@ -362,6 +408,7 @@ public class DateTimeTester extends TestCase {
         assertEquals("1600-03-01 00:00:00", leap.toString());
     }
 
+    @Test
     public void testThousandEdges() {
         Calendar calFeb = Calendar.getInstance();
         StringBuilder sb = new StringBuilder();
@@ -386,6 +433,7 @@ public class DateTimeTester extends TestCase {
     /**
      * A European formatted date presents day before month, where North America presents month before day.
      */
+    @Test
     public void testEuropean() {
         DateTimeConfigBuilder builder = configBuilder();
         builder.setDmyOrder(true);
@@ -398,6 +446,7 @@ public class DateTimeTester extends TestCase {
         assertEquals("2008-01-09 00:00:00", dt1.toString());
     }
 
+    @Test
     public void testEuropean2() {
         DateTimeConfigBuilder builder = configBuilder();
         builder.setDmyOrder(true);
@@ -408,22 +457,26 @@ public class DateTimeTester extends TestCase {
         assertEquals("Tue Jul 01 00:00:00", str.subSequence(0, 19));
     }
 
+    @Test
     public void testPacked() {
         DateTime dt1 = new DateTime("20080109");
         assertEquals("2008-01-09 00:00:00", dt1.toString());
     }
 
+    @Test
     public void testFormat() {
         DateTime dt = new DateTime("2010-02-14 03:00 EST");
         assertEquals("-05:00 AD -0500 EST", dt.toString("ZZ G Z z"));
     }
 
+    @Test
     public void testShift() {
         Shift shift = new Shift("P5HT7M31S");
         DateTime dt = new DateTime("2010-02-14 03:00 EST").shift(shift);
         assertEquals("2010-02-14 08:07:31", dt.toString());
     }
 
+    @Test
     public void testShift2() {
         DateTime dt = new DateTime("2011-03-04").shift(new Shift("1Y1M1W1D"));
         assertEquals("2012", dt.toString("yyyy"));
@@ -431,11 +484,13 @@ public class DateTimeTester extends TestCase {
         assertEquals("12", dt.toString("dd"));
     }
 
+    @Test
     public void testShift3() {
         DateTime dt = new DateTime("2010-02-14 03:00 EST").shift("P5HT7M31S");
         assertEquals("2010-02-14 08:07:31", dt.toString());
     }
 
+    @Test
     public void testNearDST() {
         // EST observed on the 2nd Sunday in March
         DateTime dt = new DateTime("2009-03-08 00:00 PST");
@@ -446,6 +501,7 @@ public class DateTimeTester extends TestCase {
         }
     }
 
+    @Test
     public void testNonsenseMonth() {
         try {
             DateTime dt = new DateTime("2010-02-00");
@@ -455,6 +511,7 @@ public class DateTimeTester extends TestCase {
         }
     }
 
+    @Test
     public void testNonsenseDay() {
         try {
             DateTime dt = new DateTime("2010-01-32");
@@ -464,6 +521,7 @@ public class DateTimeTester extends TestCase {
         }
     }
 
+    @Test
     public void testNonsenseHour() {
         try {
             DateTime dt = new DateTime("17-Aug-2010 30:20:10");
@@ -473,6 +531,7 @@ public class DateTimeTester extends TestCase {
         }
     }
 
+    @Test
     public void testNonsenseMinute() {
         try {
             DateTime dt = new DateTime("2010.04.30 8:61");
@@ -482,6 +541,7 @@ public class DateTimeTester extends TestCase {
         }
     }
 
+    @Test
     public void testNonsenseSecond() {
         try {
             DateTime dt = new DateTime("20-Sep-2010 8:7:77");
@@ -491,6 +551,7 @@ public class DateTimeTester extends TestCase {
         }
     }
 
+    @Test
     public void testMissingYear() {
         try {
             DateTime dt = new DateTime("20-Sep");
@@ -505,6 +566,7 @@ public class DateTimeTester extends TestCase {
      * month, 0 or 32 for a day. Detect the validity of the dates by regex, then verify whether DateTime throws an exception when
      * it should, and captures a valid date when it should.
      */
+    @Test
     public void testBruteForceYYYYMMDD() {
         DateTime dt;
         for (int yr = 1990; yr < 2010; yr++) {
@@ -559,6 +621,7 @@ public class DateTimeTester extends TestCase {
      *
      * @throws Exception
      */
+    @Test
     public void testPuncDate() throws Exception {
         DateTime dt = new DateTime("August 30, 2010?");
         assertNotNull(dt);
@@ -569,6 +632,7 @@ public class DateTimeTester extends TestCase {
      *
      * @throws Exception
      */
+    @Test
     public void testZeroYear() throws Exception {
         try {
             DateTime dt = new DateTime("0000-01-02");
@@ -583,6 +647,7 @@ public class DateTimeTester extends TestCase {
      *
      * @throws Exception
      */
+    @Test
     public void testTimeFirst() throws Exception {
         DateTime dt = new DateTime("2:53 pm, January 26, 1969");
         assertEquals("1969-01-26 14:53:00", dt.toString());
@@ -593,6 +658,7 @@ public class DateTimeTester extends TestCase {
      *
      * @throws Exception
      */
+    @Test
     public void testAccentAigu() throws Exception {
         DateTime dt = new DateTime("30-DÉC.-2009 11:47:19");
         assertEquals("2009-12-30 11:47:19", dt.toString());
@@ -605,6 +671,7 @@ public class DateTimeTester extends TestCase {
         assertEquals("2010-02-28 11:47:19", dt.toString());
     }
 
+    @Test
     public void test12am() throws Exception {
         DateTime dt = new DateTime("06-11-2009, 12:01 am");
         assertEquals("2009-06-11 00:01:00", dt.toString());
@@ -622,6 +689,7 @@ public class DateTimeTester extends TestCase {
         assertEquals("2009-06-11 00:00:00", dt.toString());
     }
 
+    @Test
     public void testNoYear() throws Exception {
         DateTime dt;
         dt = new DateTime("06 Aug 01:23:45");
@@ -634,6 +702,7 @@ public class DateTimeTester extends TestCase {
      *
      * @since 2.6.1
      */
+    @Test
     public void testTSeparator() throws Exception {
         String dateTimeStringIn = "1969-01-20T18:00:03.928223333";
         String newPattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'";
@@ -642,6 +711,7 @@ public class DateTimeTester extends TestCase {
         assertEquals("1969-01-20T18:00:03.928Z", outputDateTime);
     }
 
+    @Test
     public void testCrammedZ() throws Exception {
         String dts1 = "1969-01-20T18:00:03.928Z";
         String dts2 = "1969-01-20 18:00:03.928 Z";
@@ -650,6 +720,7 @@ public class DateTimeTester extends TestCase {
         assertEquals(dt1, dt2);
     }
 
+    @Test
     public void testCrammedOther() throws Exception {
         String dts1 = "27AUG2011PST";
         String dts2 = "27-AUG-2011 PST";
@@ -658,6 +729,7 @@ public class DateTimeTester extends TestCase {
         assertEquals(dt1, dt2);
     }
 
+    @Test
     public void testDayString() throws Exception {
         DateTime dt = new DateTime("2011-09-01 12:00 PST");
         assertEquals("Thursday", dt.toString("EEEE"));
@@ -676,23 +748,27 @@ public class DateTimeTester extends TestCase {
         assertEquals("Wed", dt.add(CalendarUnit.DAY, 6).toString("E"));
     }
 
+    @Test
     public void testDocs() throws Exception {
         String sample = "2011-12-13T14:15:16 PST";
         DateTime dt = new DateTime(sample);
         assertEquals("2011-12-13 14:15:16 PST", dt.toString("yyyy-MM-dd HH:mm:ss z", TimeZone.getDefault()));
     }
 
+    @Test
     public void testConstructorMT() {
         DateTime dt = new DateTime(0, "GMT");
         assertEquals(0, dt.getSeconds());
     }
 
+    @Test
     public void testConstructorSN() {
         DateTime dt = new DateTime(123, 456);
         assertEquals(123, dt.getSeconds());
         assertEquals(456, dt.getNanos());
     }
 
+    @Test
     public void testConstructorSNT() {
         DateTime dt = new DateTime(123, 456, TimeZone.getTimeZone("IST"));
         assertEquals(123, dt.getSeconds());
@@ -700,6 +776,7 @@ public class DateTimeTester extends TestCase {
         assertEquals("IST", dt.toString("z"));
     }
 
+    @Test
     public void testConstructorSNTs() {
         DateTime dt = new DateTime(123, 456, "IST");
         assertEquals(123, dt.getSeconds());
@@ -707,6 +784,7 @@ public class DateTimeTester extends TestCase {
         assertEquals("IST", dt.toString("z"));
     }
 
+    @Test
     public void testConstructorNullStr() {
         IDateTimeConfig dtc = DateTimeConfig.getGlobalDefault();
         long start = dtc.systemTime();
@@ -717,6 +795,7 @@ public class DateTimeTester extends TestCase {
         assertTrue(1 + end / 1000 >= dt.getSeconds());
     }
 
+    @Test
     public void testConstructorNullStrI() {
         long start = System.currentTimeMillis();
         String nullString = null;
@@ -728,6 +807,7 @@ public class DateTimeTester extends TestCase {
         assertTrue(1 + end / 1000 >= dt.getSeconds());
     }
 
+    @Test
     public void testConstructorTs() {
         Timestamp ts = new Timestamp(12345);
         ts.setNanos(233322235);
@@ -737,6 +817,7 @@ public class DateTimeTester extends TestCase {
         assertEquals(ts, dt.toTimestamp());
     }
 
+    @Test
     public void testCompareToNull() {
         DateTime dt = new DateTime();
         try {
@@ -748,11 +829,13 @@ public class DateTimeTester extends TestCase {
         }
     }
 
+    @Test
     public void testToStringTz() {
         DateTime dt = new DateTime("2020-02-20 15:30 GMT");
         assertEquals("2020-02-20 21:00:00", dt.toString(TimeZone.getTimeZone("IST")));
     }
 
+    @Test
     public void testToStringFmtTzLoc() {
         DateTime dt = new DateTime("2020-02-20 15:30 GMT");
         String fmt = "yyyy MMM Z";
@@ -761,12 +844,14 @@ public class DateTimeTester extends TestCase {
         assertEquals("2020 févr. +0530", dt.toString(fmt, tz, loc));
     }
 
+    @Test
     public void testParseYYYYMMDD() {
         DateTime dt1 = new DateTime("2011-03-28");
         DateTime dt2 = new DateTime("20110328");
         assertEquals(dt1, dt2);
     }
 
+    @Test
     public void testRelativeYearMinus() {
         DateTime dt1 = new DateTime();
         DateTime dt2 = new DateTime("-1Y");
@@ -775,6 +860,7 @@ public class DateTimeTester extends TestCase {
         assertEquals(tm1.getYear(), tm2.getYear() + 1);
     }
 
+    @Test
     public void testRelativeYearPlus() {
         DateTime dt1 = new DateTime();
         DateTime dt2 = new DateTime("+1Y");
@@ -783,6 +869,7 @@ public class DateTimeTester extends TestCase {
         assertEquals(tm1.getYear(), tm2.getYear() - 1);
     }
 
+    @Test
     public void testRelativeYearBad() {
         try {
             new DateTime("-1Y2");
@@ -792,6 +879,7 @@ public class DateTimeTester extends TestCase {
         }
     }
 
+    @Test
     public void testRelativeMonthMinus() {
         DateTime dt1 = new DateTime();
         DateTime dt2 = new DateTime("-1M");
@@ -804,6 +892,7 @@ public class DateTimeTester extends TestCase {
         }
     }
 
+    @Test
     public void testRelativeMonthPlus() {
         DateTime dt1 = new DateTime();
         DateTime dt2 = new DateTime("+1M");
@@ -816,6 +905,7 @@ public class DateTimeTester extends TestCase {
         }
     }
 
+    @Test
     public void testConstructorNullWithConfig() {
         IDateTimeConfig dtc = DateTimeConfig.getGlobalDefault();
         String str = null;
@@ -826,6 +916,7 @@ public class DateTimeTester extends TestCase {
         assertTrue(after >= dt.getSeconds());
     }
 
+    @Test
     public void testConstructorBlank() {
         try {
             new DateTime("");
@@ -835,6 +926,7 @@ public class DateTimeTester extends TestCase {
         }
     }
 
+    @Test
     public void testConstructorBlankConfig() {
         try {
             DateTimeConfig dtc = null;
@@ -845,6 +937,7 @@ public class DateTimeTester extends TestCase {
         }
     }
 
+    @Test
     public void testParseNull() {
         IDateTimeConfig dtc = DateTimeConfig.getGlobalDefault();
         String str = null;
@@ -858,23 +951,27 @@ public class DateTimeTester extends TestCase {
         assertTrue(after >= dt2.getSeconds());
     }
 
+    @Test
     public void testHashCode() {
         DateTime dt = new DateTime();
         assertTrue(0 != dt.hashCode());
     }
 
+    @Test
     public void testHourlyOffsetWithColon() {
         DateTime dt = DateTime.parse("2012-01-02 17:30+05:30"); // 5:30pm in India(GMT+5.5), Noon UTC, 7am EST(-5), 4am PST(-8)
         assertEquals("2012-01-02 07:00:00", dt.toString()); // DateTimeConfig.outputTimeZone is set to EST
         assertEquals("2012-01-02 04:00:00", dt.toString(TimeZone.getTimeZone("America/Los_Angeles")));
     }
 
+    @Test
     public void testHourlyOffsetWithoutColon() {
         DateTime dt = DateTime.parse("2012-01-02 17:30+0530"); // 5:30pm in India(GMT+5.5), Noon UTC, 7am EST(-5), 4am PST(-8)
         assertEquals("2012-01-02 07:00:00", dt.toString()); // DateTimeConfig.outputTimeZone is set to EST
         assertEquals("2012-01-02 04:00:00", dt.toString(TimeZone.getTimeZone("America/Los_Angeles")));
     }
 
+    @Test
     public void testInvalidDates() {
         try {
             DateTime dt = DateTime.parse("31/50/2013 00:30:05");
@@ -906,6 +1003,7 @@ public class DateTimeTester extends TestCase {
      * Note, these changes are provided by the TimeZone object-- and are relevant
      * to countries in many other locales.  India is chosen as a convenient example.
      */
+    @Test
     public void testHistoricalOffsetChange() throws Exception {
         TimeZone tz = TimeZone.getTimeZone("IST");
         DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
@@ -928,12 +1026,14 @@ public class DateTimeTester extends TestCase {
         assertEquals(23 * minute + 20 * second, (time4 - time3) % day);
     }
 
+    @Test
     public void testDateWithYearFollowingTimeZone() {
         TimeZone utc=TimeZone.getTimeZone("UTC");
         DateTime dt=new DateTime("Wed Mar 04 05:09:06 GMT-06:00 2009", utc);
         assertEquals("2009-03-04 11:09:06", dt.toString());
     }
 
+    @Test
     public void testDateWithTwoDigitYearAndMonthEndingInT() {
         TimeZone utc=TimeZone.getTimeZone("UTC");
         DateTime dt=new DateTime("11 Oct 16", utc);

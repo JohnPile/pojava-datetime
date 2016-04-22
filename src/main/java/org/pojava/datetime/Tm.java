@@ -213,8 +213,12 @@ public class Tm {
      * @return time in milliseconds since epoch, UTC.
      */
     public static long calcTime(int year, int month, int day) {
+        return calcTime(year, month, day, DateTimeConfig.getGlobalDefault().getCalendarSupplier());
+    }
+
+    public static long calcTime(int year, int month, int day, CalendarSupplier calendarSupplier) {
         IDateTimeConfig config = DateTimeConfig.getGlobalDefault();
-        return calcTime(year, month, day, 0, 0, 0, 0, config.getOutputTimeZone());
+        return calcTime(year, month, day, 0, 0, 0, 0, config.getOutputTimeZone(), calendarSupplier);
     }
 
     /**
@@ -232,8 +236,13 @@ public class Tm {
      */
     public static long calcTime(int year, int month, int day, int hour, int min, int sec,
                                 int milli) {
+        return calcTime(year, month, day, hour, min, sec, milli,
+                DateTimeConfig.getGlobalDefault().getCalendarSupplier());
+    }
+    public static long calcTime(int year, int month, int day, int hour, int min, int sec,
+                                int milli, CalendarSupplier calendarSupplier) {
         IDateTimeConfig config = DateTimeConfig.getGlobalDefault();
-        return calcTime(year, month, day, hour, min, sec, milli, config.getOutputTimeZone());
+        return calcTime(year, month, day, hour, min, sec, milli, config.getOutputTimeZone(), calendarSupplier);
     }
 
     /**
@@ -251,7 +260,13 @@ public class Tm {
      */
     public static long calcTime(int year, int month, int day, int hour, int min, int sec,
                                 int milli, TimeZone tz) {
-        Calendar cal = Calendar.getInstance(tz);
+        return calcTime(year, month, day, hour, min, sec, milli, tz,
+                DateTimeConfig.getGlobalDefault().getCalendarSupplier());
+    }
+
+    public static long calcTime(int year, int month, int day, int hour, int min, int sec,
+                                int milli, TimeZone tz, CalendarSupplier calendarSupplier) {
+        Calendar cal = calendarSupplier.getCalendar(tz);
         cal.set(Calendar.YEAR, year);
         cal.set(Calendar.MONTH, month - 1);
         cal.set(Calendar.DAY_OF_MONTH, day);

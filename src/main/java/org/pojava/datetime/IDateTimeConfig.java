@@ -66,4 +66,6 @@ public interface IDateTimeConfig {
 
     public void validate();
 
+    public CalendarSupplier getCalendarSupplier();
+
 }

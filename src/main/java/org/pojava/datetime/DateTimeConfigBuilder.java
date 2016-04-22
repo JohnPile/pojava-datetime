@@ -21,6 +21,7 @@ public class DateTimeConfigBuilder {
     private Locale locale = Locale.getDefault();
     private String bcPrefix = "-";
     private MonthMap monthMap;
+    private CalendarSupplier calendarSupplier = DefaultCalendarSupplier.INSTANCE;
     /**
      * <p>
      * Support parsing of zones unlisted in TimeZone by translating to known zones. Got a zone
@@ -208,5 +209,13 @@ public class DateTimeConfigBuilder {
 
     public Map<String, String> getTzMap() {
         return tzMap;
+    }
+
+    public void setCalendarSupplier(CalendarSupplier calendarSupplier) {
+        this.calendarSupplier = calendarSupplier;
+    }
+
+    public CalendarSupplier getCalendarSupplier() {
+        return calendarSupplier;
     }
 }
